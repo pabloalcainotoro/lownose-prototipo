@@ -49,7 +49,6 @@ export default function CartPage() {
   const updateSize = (item: any, newSize: string) => {
     // Verificamos si ya existe el producto con la talla de destino
     const existingTargetItem = cart.find((i: any) => i.id === item.id && i.size === newSize);
-
     if (existingTargetItem) {
       // Si ya existe la talla, sumamos cantidades y eliminamos el ítem original
       updateItem({
