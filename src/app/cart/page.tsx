@@ -43,7 +43,6 @@ export default function CartPage() {
 
   const totalWithShipping = subtotal + shippingCost;
 
-  // --- Validación agregada para respetar el stock máximo ---
   const updateQuantity = (item: any, delta: number) => {
     const newQty = item.quantity + delta;
     const limit = item.maxStock || 99;
@@ -77,6 +76,18 @@ export default function CartPage() {
   const handleFinalize = async () => {
     setIsProcessing(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // --- LÓGICA DE REDUCCIÓN DE STOCK AL COMPRAR ---
+    const allProducts = JSON.parse(localStorage.getItem('lownose_products') || '[]');
+    const updatedProducts = allProducts.map((p: any) => {
+      const itemInCart = cart.find((i: any) => i.id === p.id);
+      if (itemInCart) {
+        return { ...p, maxStock: Math.max(0, p.maxStock - itemInCart.quantity) };
+      }
+      return p;
+    });
+    localStorage.setItem('lownose_products', JSON.stringify(updatedProducts));
+    // ----------------------------------------------
 
     const order = {
       id: Date.now(),
