@@ -9,12 +9,12 @@ import { CHILE_DATA } from '@/utils/chile';
 export default function CartPage() {
   const { data: session } = useSession();
   const { cart, cartCount, removeFromCart, clearCart, updateItem } = useCart();
-  
+
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerRegion, setCustomerRegion] = useState('');
   const [customerComuna, setCustomerComuna] = useState('');
-  
+
   const [showRegionList, setShowRegionList] = useState(false);
   const [showComunaList, setShowComunaList] = useState(false);
   const [openSizeIndex, setOpenSizeIndex] = useState<number | null>(null);
@@ -52,10 +52,10 @@ export default function CartPage() {
 
     if (existingTargetItem) {
       // Si ya existe la talla, sumamos cantidades y eliminamos el ítem original
-      updateItem({ 
-        ...existingTargetItem, 
-        quantity: existingTargetItem.quantity + item.quantity, 
-        originalSize: newSize 
+      updateItem({
+        ...existingTargetItem,
+        quantity: existingTargetItem.quantity + item.quantity,
+        originalSize: newSize
       });
       removeFromCart(item.id, item.size);
     } else {
@@ -68,14 +68,14 @@ export default function CartPage() {
   const handleFinalize = async () => {
     setIsProcessing(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    
+
     const order = {
       id: Date.now(),
       items: cart,
       total: totalWithShipping,
       customer: { name: customerName, address: customerAddress, region: customerRegion, comuna: customerComuna }
     };
-    
+
     const orders = JSON.parse(localStorage.getItem('lownose_orders') || '[]');
     orders.push(order);
     localStorage.setItem('lownose_orders', JSON.stringify(orders));
@@ -109,7 +109,7 @@ export default function CartPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
       <h2 className="text-3xl font-black uppercase tracking-wider mb-8">Checkout</h2>
-      
+
       {showReview ? (
         <div className="bg-neutral-50 dark:bg-neutral-950 p-8 border border-gray-100 dark:border-neutral-900 max-w-lg mx-auto">
           <h3 className="font-bold uppercase mb-4">Confirmar envío a:</h3>
@@ -139,7 +139,7 @@ export default function CartPage() {
                   <div>
                     <h3 className="font-bold uppercase text-sm">{item.name}</h3>
                     <div className="relative my-2">
-                      <div 
+                      <div
                         onClick={() => setOpenSizeIndex(openSizeIndex === index ? null : index)}
                         className="cursor-pointer border p-1 text-[10px] font-bold text-neutral-500 uppercase flex justify-between items-center w-20 bg-white dark:bg-black"
                       >
@@ -148,9 +148,9 @@ export default function CartPage() {
                       {openSizeIndex === index && (
                         <div className="absolute z-50 w-20 bg-white dark:bg-neutral-900 border shadow-lg max-h-40 overflow-y-auto">
                           {(item.availableSizes || ['S', 'M', 'L', 'XL']).map((s: string) => (
-                            <div 
-                              key={s} 
-                              className="p-2 text-[10px] uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" 
+                            <div
+                              key={s}
+                              className="p-2 text-[10px] uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
                               onClick={() => updateSize(item, s)}
                             >
                               {s}
@@ -175,7 +175,7 @@ export default function CartPage() {
           <div className="bg-gray-50 dark:bg-neutral-950 p-6 border border-gray-100 dark:border-neutral-900 h-fit space-y-4">
             <input placeholder="Nombre" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full border p-2 text-sm bg-white dark:bg-black" />
             <input placeholder="Dirección" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} className="w-full border p-2 text-sm bg-white dark:bg-black" />
-            
+
             <div className="relative">
               <input readOnly placeholder="Región" value={customerRegion} onClick={() => setShowRegionList(!showRegionList)} className="w-full border p-2 text-sm bg-white dark:bg-black cursor-pointer" />
               {showRegionList && (
@@ -184,7 +184,7 @@ export default function CartPage() {
                 </div>
               )}
             </div>
-            
+
             <div className="relative">
               <input readOnly placeholder="Comuna" value={customerComuna} onClick={() => customerRegion && setShowComunaList(!showComunaList)} className="w-full border p-2 text-sm bg-white dark:bg-black cursor-pointer" />
               {showComunaList && (
