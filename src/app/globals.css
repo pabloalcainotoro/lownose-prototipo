@@ -1,26 +1,36 @@
+/* src/app/globals.css */
 @import "tailwindcss";
 
+@theme {
+  /* Variables de marca si las requieres */
+}
+
+/* 1. Valores por defecto (Modo Claro) */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* 2. Forzar Modo Oscuro si el usuario lo activa de forma manual */
+html.dark {
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
+/* 3. Respetar Modo Oscuro si viene predeterminado por el sistema del cliente */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html:not(.light) {
+    --background: #000000;
+    --foreground: #ffffff;
   }
 }
 
+/* 4. Aplicar los colores a toda la aplicación */
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* Variante estricta para habilitar las utilidades dark: de Tailwind v4 */
+@variant dark (html.dark &);
