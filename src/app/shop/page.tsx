@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import ProductSkeleton from "@/components/ProductSkeleton";
 
 const initialProducts = [
-  { id: 1, name: "Oversized Heavy Weight Hoodie", price: 45000, image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600", sizes: ["S", "M", "L", "XL"] },
-  { id: 2, name: "LowNose Box Logo Tee", price: 22000, image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600", sizes: ["M", "L", "XL", "XXL"] },
-  { id: 3, name: "Acid Wash Street Sweatshirt", price: 38000, image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600", sizes: ["S", "M", "L"] }
+  { id: 1, name: "Oversized Heavy Weight Hoodie", price: 45000, maxStock: 10, image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600", sizes: ["S", "M", "L", "XL"] },
+  { id: 2, name: "LowNose Box Logo Tee", price: 22000, maxStock: 20, image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600", sizes: ["M", "L", "XL", "XXL"] },
+  { id: 3, name: "Acid Wash Street Sweatshirt", price: 38000, maxStock: 5, image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600", sizes: ["S", "M", "L"] }
 ];
 
 export default function ShopPage() {
@@ -27,7 +27,7 @@ export default function ShopPage() {
       }
       setLoading(false);
     }, 800);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -41,15 +41,16 @@ export default function ShopPage() {
       alert("Por favor, selecciona una talla antes de añadir al carrito.");
       return;
     }
-    
-    // AQUÍ ESTÁ EL CAMBIO: Pasamos el array 'sizes' al contexto
+
+    // AQUÍ SE AGREGA maxStock AL CARRITO
     addToCart({
       ...product,
       size: size,
-      availableSizes: product.sizes, // Pasamos las tallas disponibles
+      availableSizes: product.sizes,
+      maxStock: product.maxStock || 99, // Pasamos el stock máximo definido en el admin
       quantity: 1
     });
-    
+
     alert(`¡${product.name} (Talla ${size}) añadido al carrito!`);
   };
 
@@ -67,10 +68,10 @@ export default function ShopPage() {
           products.map((product) => (
             <div key={product.id} className="flex flex-col justify-between group">
               <div className="relative aspect-square bg-neutral-50 dark:bg-neutral-950 overflow-hidden mb-4 border border-neutral-100 dark:border-neutral-900">
-                <img 
-                  src={product.image} 
-                  alt={product.name} 
-                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500 ease-out" 
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500 ease-out"
                 />
               </div>
 
@@ -81,6 +82,9 @@ export default function ShopPage() {
                 <p className="font-mono text-sm text-neutral-600 dark:text-neutral-400 mb-4">
                   ${product.price.toLocaleString('es-CL')}
                 </p>
+                <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-widest mb-4">
+                  Stock disponible: {product.maxStock || 0}
+                </p>
 
                 <div className="mb-5">
                   <span className="block text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-2">
@@ -90,14 +94,13 @@ export default function ShopPage() {
                     {product.sizes && product.sizes.map((size: string) => {
                       const isSelected = selectedSizes[product.id] === size;
                       return (
-                        <button 
-                          key={size} 
-                          onClick={() => handleSizeSelect(product.id, size)} 
-                          className={`w-9 h-9 text-xs font-mono font-bold border transition-colors cursor-pointer flex items-center justify-center ${
-                            isSelected 
-                              ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white' 
+                        <button
+                          key={size}
+                          onClick={() => handleSizeSelect(product.id, size)}
+                          className={`w-9 h-9 text-xs font-mono font-bold border transition-colors cursor-pointer flex items-center justify-center ${isSelected
+                              ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white'
                               : 'border-neutral-200 dark:border-neutral-800 text-neutral-500 hover:border-neutral-400 dark:hover:border-neutral-600'
-                          }`}
+                            }`}
                         >
                           {size}
                         </button>
@@ -106,8 +109,8 @@ export default function ShopPage() {
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => handleAddToCartClick(product)} 
+                <button
+                  onClick={() => handleAddToCartClick(product)}
                   className="w-full bg-black text-white dark:bg-white dark:text-black py-3 text-xs font-bold uppercase tracking-widest hover:opacity-80 transition-opacity cursor-pointer border border-transparent"
                 >
                   Añadir al Carrito

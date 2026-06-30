@@ -1,4 +1,3 @@
-// src/app/admin/page.tsx
 'use client';
 
 import { useSession } from "next-auth/react";
@@ -6,9 +5,9 @@ import { useEffect, useState } from "react";
 
 // Productos iniciales de fábrica para LowNose
 const initialProducts = [
-  { id: 1, name: "Oversized Heavy Weight Hoodie", price: 45000, image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600", sizes: ["S", "M", "L", "XL"] },
-  { id: 2, name: "LowNose Box Logo Tee", price: 22000, image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600", sizes: ["M", "L", "XL", "XXL"] },
-  { id: 3, name: "Acid Wash Street Sweatshirt", price: 38000, image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600", sizes: ["S", "M", "L"] }
+  { id: 1, name: "Oversized Heavy Weight Hoodie", price: 45000, maxStock: 10, image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600", sizes: ["S", "M", "L", "XL"] },
+  { id: 2, name: "LowNose Box Logo Tee", price: 22000, maxStock: 20, image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600", sizes: ["M", "L", "XL", "XXL"] },
+  { id: 3, name: "Acid Wash Street Sweatshirt", price: 38000, maxStock: 5, image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600", sizes: ["S", "M", "L"] }
 ];
 
 export default function AdminPage() {
@@ -19,19 +18,20 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState(0);
+  const [maxStock, setMaxStock] = useState(10); // <--- AGREGADO
   const [image, setImage] = useState('');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
 
   const availableSizes = ["S", "M", "L", "XL", "XXL"];
 
-  // 1. Protección estricta de ruta: si no es admin, fuera al login
+  // 1. Protección estricta de ruta
   useEffect(() => {
     if (status === "unauthenticated" || (session && session.user?.email !== "admin@lownose.cl")) {
       window.location.href = "/login";
     }
   }, [status, session]);
 
-  // 2. Carga segura del catálogo en el cliente
+  // 2. Carga segura del catálogo
   useEffect(() => {
     const localData = localStorage.getItem('lownose_products');
     if (localData) {
@@ -42,7 +42,6 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Control del selector multiselección de tallas
   const handleSizeToggle = (size: string) => {
     if (selectedSizes.includes(size)) {
       setSelectedSizes(selectedSizes.filter(s => s !== size));
@@ -62,17 +61,16 @@ export default function AdminPage() {
     let updatedProducts;
 
     if (editingId !== null) {
-      // Estamos editando un producto existente
       updatedProducts = products.map(p => 
-        p.id === editingId ? { ...p, name, price: Number(price), image, sizes: selectedSizes } : p
+        p.id === editingId ? { ...p, name, price: Number(price), maxStock: Number(maxStock), image, sizes: selectedSizes } : p
       );
       setEditingId(null);
     } else {
-      // Estamos creando una prenda totalmente nueva
       const newProduct = {
         id: Date.now(),
         name,
         price: Number(price),
+        maxStock: Number(maxStock), // <--- AGREGADO
         image,
         sizes: selectedSizes
       };
@@ -82,23 +80,22 @@ export default function AdminPage() {
     setProducts(updatedProducts);
     localStorage.setItem('lownose_products', JSON.stringify(updatedProducts));
     
-    // Resetear el formulario limpio
     setName('');
     setPrice(0);
+    setMaxStock(10); // <--- RESET
     setImage('');
     setSelectedSizes([]);
   };
 
-  // ACCIÓN: MONTAR PRENDA EN EL FORMULARIO PARA EDITAR
   const startEdit = (product: any) => {
     setEditingId(product.id);
     setName(product.name);
     setPrice(product.price);
+    setMaxStock(product.maxStock || 10); // <--- AGREGADO
     setImage(product.image);
     setSelectedSizes(product.sizes || []);
   };
 
-  // ACCIÓN: ELIMINAR PRENDA
   const deleteProduct = (id: number) => {
     if (confirm("¿Estás seguro de que quieres eliminar este producto del catálogo permanentemente?")) {
       const updated = products.filter(p => p.id !== id);
@@ -107,7 +104,6 @@ export default function AdminPage() {
     }
   };
 
-  // Pantalla de carga estética mientras NextAuth verifica el token de sesión
   if (status === "loading" || !session) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -123,7 +119,6 @@ export default function AdminPage() {
       <h1 className="text-3xl font-black uppercase tracking-tight mb-8">Panel de Administración</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* COLUMNA IZQUIERDA: EL FORMULARIO */}
         <div className="bg-neutral-50 dark:bg-neutral-950 p-6 border border-gray-100 dark:border-neutral-900 h-fit">
           <h2 className="text-md font-black uppercase tracking-wider mb-4 text-neutral-400">
             {editingId ? "Modificar Ítems" : "Añadir al Catálogo"}
@@ -140,12 +135,17 @@ export default function AdminPage() {
               <input type="number" value={price || ''} onChange={(e) => setPrice(Number(e.target.value))} className="w-full bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 p-2 text-sm text-black dark:text-white focus:outline-none" placeholder="35000" />
             </div>
 
+            {/* --- CAMPO NUEVO --- */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">Stock Máximo</label>
+              <input type="number" value={maxStock || ''} onChange={(e) => setMaxStock(Number(e.target.value))} className="w-full bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 p-2 text-sm text-black dark:text-white focus:outline-none" placeholder="10" />
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">URL de la Imagen</label>
               <input type="text" value={image} onChange={(e) => setImage(e.target.value)} className="w-full bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 p-2 text-sm text-black dark:text-white focus:outline-none" placeholder="https://images.unsplash.com/..." />
             </div>
 
-            {/* SELECTOR DE RANGO DE TALLAS */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-2">Curva de Tallas Disponibles</label>
               <div className="flex flex-wrap gap-2">
@@ -165,7 +165,7 @@ export default function AdminPage() {
                 {editingId ? "Guardar Cambios" : "Publicar Prenda"}
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setName(''); setPrice(0); setImage(''); setSelectedSizes([]); }} className="border border-red-500 text-red-500 px-4 py-2 text-xs font-bold uppercase cursor-pointer">
+                <button type="button" onClick={() => { setEditingId(null); setName(''); setPrice(0); setMaxStock(10); setImage(''); setSelectedSizes([]); }} className="border border-red-500 text-red-500 px-4 py-2 text-xs font-bold uppercase cursor-pointer">
                   Cancelar
                 </button>
               )}
@@ -173,7 +173,6 @@ export default function AdminPage() {
           </form>
         </div>
 
-        {/* COLUMNA DERECHA: LISTADO EN VIVO */}
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-md font-black uppercase tracking-wider mb-4 text-neutral-400">
             Inventario Activo ({products.length})
@@ -181,7 +180,7 @@ export default function AdminPage() {
           
           <div className="border border-gray-100 dark:border-neutral-900 divide-y divide-gray-100 dark:divide-neutral-900">
             {products.length === 0 ? (
-              <p className="p-8 text-center text-sm text-neutral-400">El catálogo está vacío. Crea tu primer producto a la izquierda.</p>
+              <p className="p-8 text-center text-sm text-neutral-400">El catálogo está vacío.</p>
             ) : (
               products.map((product) => (
                 <div key={product.id} className="p-4 flex items-center justify-between bg-neutral-50/40 dark:bg-neutral-950/20">
@@ -189,7 +188,9 @@ export default function AdminPage() {
                     <img src={product.image} alt={product.name} className="w-14 h-14 object-cover border border-neutral-200 dark:border-neutral-800" />
                     <div>
                       <h4 className="font-bold text-sm text-black dark:text-white">{product.name}</h4>
-                      <p className="text-xs text-neutral-500 font-mono">${product.price.toLocaleString('es-CL')}</p>
+                      <p className="text-xs text-neutral-500 font-mono">
+                        ${product.price.toLocaleString('es-CL')} | Stock: {product.maxStock || 0} {/* --- MUESTRA STOCK --- */}
+                      </p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {product.sizes?.map((s: string) => (
                           <span key={s} className="bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 text-[9px] font-mono rounded font-bold text-neutral-700 dark:text-neutral-300">{s}</span>

@@ -36,21 +36,31 @@ export default function CartPage() {
   }, [session]);
 
   const subtotal = cart.reduce((total: number, item: any) => total + (Number(item.price) * Number(item.quantity)), 0);
-  const shippingCost = customerRegion.toLowerCase().includes('metropolitana') ? 3000 : 6000;
-  const totalWithShipping = subtotal + (customerRegion ? shippingCost : 0);
 
+  const shippingCost = customerRegion
+    ? (customerRegion.toLowerCase().includes('metropolitana') ? 3000 : 6000)
+    : 0;
+
+  const totalWithShipping = subtotal + shippingCost;
+
+  // --- Validación agregada para respetar el stock máximo ---
   const updateQuantity = (item: any, delta: number) => {
     const newQty = item.quantity + delta;
-    if (newQty > 0) {
+    const limit = item.maxStock || 99;
+    if (newQty >= 1 && newQty <= limit) {
       updateItem({ ...item, quantity: newQty, originalSize: item.size });
     }
   };
 
   const updateSize = (item: any, newSize: string) => {
-    // Verificamos si ya existe el producto con la talla de destino
+    if (item.size === newSize) {
+      setOpenSizeIndex(null);
+      return;
+    }
+
     const existingTargetItem = cart.find((i: any) => i.id === item.id && i.size === newSize);
+
     if (existingTargetItem) {
-      // Si ya existe la talla, sumamos cantidades y eliminamos el ítem original
       updateItem({
         ...existingTargetItem,
         quantity: existingTargetItem.quantity + item.quantity,
@@ -58,9 +68,9 @@ export default function CartPage() {
       });
       removeFromCart(item.id, item.size);
     } else {
-      // Si no existe, solo actualizamos la talla
       updateItem({ ...item, size: newSize, originalSize: item.size });
     }
+
     setOpenSizeIndex(null);
   };
 
@@ -140,7 +150,7 @@ export default function CartPage() {
                     <div className="relative my-2">
                       <div
                         onClick={() => setOpenSizeIndex(openSizeIndex === index ? null : index)}
-                        className="cursor-pointer border p-1 text-[10px] font-bold text-neutral-500 uppercase flex justify-between items-center w-20 bg-white dark:bg-black"
+                        className="cursor-pointer border p-1 text-[10px] font-bold text-500 uppercase flex justify-between items-center w-20 bg-white dark:bg-black"
                       >
                         {item.size} <span>▾</span>
                       </div>
@@ -159,9 +169,45 @@ export default function CartPage() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2 mb-2">
-                      <button onClick={() => updateQuantity(item, -1)} className="px-2 border text-[10px]">-</button>
-                      <span className="text-[10px] font-bold">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item, 1)} className="px-2 border text-[10px]">+</button>
+                      <button
+                        onClick={() => updateQuantity(item, -1)}
+                        className="px-2 border text-[10px] hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      >
+                        -
+                      </button>
+
+                      <input
+                        type="number"
+                        min="1"
+                        max={item.maxStock || 99}
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          const limit = item.maxStock || 99;
+                          if (!isNaN(val) && val >= 1 && val <= limit) {
+                            updateItem({ ...item, quantity: val, originalSize: item.size });
+                          } else if (e.target.value === '') {
+                            updateItem({ ...item, quantity: '', originalSize: item.size });
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const val = parseInt(e.target.value);
+                          const limit = item.maxStock || 99;
+                          if (isNaN(val) || val < 1) {
+                            updateItem({ ...item, quantity: 1, originalSize: item.size });
+                          } else if (val > limit) {
+                            updateItem({ ...item, quantity: limit, originalSize: item.size });
+                          }
+                        }}
+                        className="w-10 text-center text-[10px] font-bold border-b border-black dark:border-white bg-transparent focus:outline-none"
+                      />
+
+                      <button
+                        onClick={() => updateQuantity(item, 1)}
+                        className="px-2 border text-[10px] hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      >
+                        +
+                      </button>
                     </div>
                     <button onClick={() => removeFromCart(item.id, item.size)} className="text-[10px] font-bold text-red-500 uppercase underline">Eliminar</button>
                   </div>
@@ -179,7 +225,23 @@ export default function CartPage() {
               <input readOnly placeholder="Región" value={customerRegion} onClick={() => setShowRegionList(!showRegionList)} className="w-full border p-2 text-sm bg-white dark:bg-black cursor-pointer" />
               {showRegionList && (
                 <div className="absolute z-50 w-full bg-white dark:bg-neutral-900 border max-h-40 overflow-y-auto">
-                  {Object.keys(CHILE_DATA).map(r => <div key={r} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100" onClick={() => { setCustomerRegion(r); setCustomerComuna(''); setShowRegionList(false); }}>{r}</div>)}
+                  <div
+                    className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 text-gray-400 font-bold"
+                    onClick={() => { setCustomerRegion(''); setCustomerComuna(''); setShowRegionList(false); }}
+                  >
+                    -- Limpiar selección --
+                  </div>
+                  {Object.keys(CHILE_DATA)
+                    .sort((a, b) => a.localeCompare(b))
+                    .map(r => (
+                      <div
+                        key={r}
+                        className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        onClick={() => { setCustomerRegion(r); setCustomerComuna(''); setShowRegionList(false); }}
+                      >
+                        {r}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -188,7 +250,23 @@ export default function CartPage() {
               <input readOnly placeholder="Comuna" value={customerComuna} onClick={() => customerRegion && setShowComunaList(!showComunaList)} className="w-full border p-2 text-sm bg-white dark:bg-black cursor-pointer" />
               {showComunaList && (
                 <div className="absolute z-50 w-full bg-white dark:bg-neutral-900 border max-h-40 overflow-y-auto">
-                  {(CHILE_DATA[customerRegion] || []).map(c => <div key={c} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100" onClick={() => { setCustomerComuna(c); setShowComunaList(false); }}>{c}</div>)}
+                  <div
+                    className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 text-gray-400 font-bold"
+                    onClick={() => { setCustomerComuna(''); setShowComunaList(false); }}
+                  >
+                    -- Limpiar selección --
+                  </div>
+                  {(CHILE_DATA[customerRegion] || [])
+                    .sort((a: string, b: string) => a.localeCompare(b))
+                    .map((c: string) => (
+                      <div
+                        key={c}
+                        className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        onClick={() => { setCustomerComuna(c); setShowComunaList(false); }}
+                      >
+                        {c}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>

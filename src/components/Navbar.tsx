@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { NavbarCounter } from "@/components/NavbarCounter"; 
-import { ThemeToggle } from "@/components/ThemeToggle"; 
+import { NavbarCounter } from "@/components/NavbarCounter";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,31 +11,31 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-[var(--background)] text-[var(--foreground)] border-b border-gray-100 dark:border-neutral-900 px-4 md:px-6 py-4 w-full overflow-x-hidden transition-colors duration-300">
       <div className="flex justify-between items-center max-w-7xl mx-auto w-full">
-        
+
         {/* LOGO */}
         <Link href="/" className="text-xl md:text-2xl font-black tracking-widest uppercase flex-shrink-0">
           LowNose
         </Link>
-        
+
         {/* CONTENEDOR DERECHO */}
         <div className="flex items-center space-x-3 md:space-x-6 font-medium text-sm flex-shrink-0">
-          
+
           {/* Enlaces para PC */}
           <div className="hidden md:flex items-center space-x-4">
             <Link href="/shop" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               Tienda
             </Link>
             <Link href="/orders" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              My Orders
+              Mis Pedidos
             </Link>
             <Link href="/login" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               Mi Cuenta
             </Link>
           </div>
-          
+
           {/* Utilidades fijas */}
-          <NavbarCounter /> 
-          <ThemeToggle /> 
+          <NavbarCounter />
+          <ThemeToggle />
 
           {/* BOTÓN 3 LÍNEAS (Móvil) */}
           <button

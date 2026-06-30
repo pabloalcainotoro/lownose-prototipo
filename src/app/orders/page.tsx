@@ -18,10 +18,10 @@ export default function MyOrdersPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-24">
-      <h2 className="text-3xl font-black uppercase tracking-wider mb-12">My Orders</h2>
+      <h2 className="text-3xl font-black uppercase tracking-wider mb-12">Mis Pedidos</h2>
       
       {myOrders.length === 0 ? (
-        <p className="text-sm font-bold uppercase text-gray-500">No orders found.</p>
+        <p className="text-sm font-bold uppercase text-gray-500">No se encontraron pedidos.</p>
       ) : (
         <div className="space-y-8">
           {myOrders.map((order: any) => (
