@@ -7,11 +7,10 @@ import Link from 'next/link';
 import { CHILE_DATA } from '@/utils/chile';
 import { createClient } from '@supabase/supabase-js';
 
-// Configuración de Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Inicialización segura de Supabase para evitar errores de build
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function CartPage() {
   const { data: session } = useSession();
@@ -85,7 +84,7 @@ export default function CartPage() {
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     // --- LÓGICA DE PERSISTENCIA EN SUPABASE ---
-    if (session?.user?.email) {
+    if (session?.user?.email && supabase) {
       try {
         await supabase.from('orders').insert({
           user_id: session.user.id,
@@ -100,7 +99,7 @@ export default function CartPage() {
     }
     // ------------------------------------------
 
-    // --- TU LÓGICA ORIGINAL ---
+    // --- LÓGICA DE PRODUCTOS ---
     const allProducts = JSON.parse(localStorage.getItem('lownose_products') || '[]');
     const updatedProducts = allProducts.map((p: any) => {
       const itemInCart = cart.find((i: any) => i.id === p.id);
@@ -111,16 +110,16 @@ export default function CartPage() {
     });
     localStorage.setItem('lownose_products', JSON.stringify(updatedProducts));
 
-    // Clave dinámica por usuario para evitar ver pedidos ajenos
+    // Clave dinámica por usuario
     const userKey = session?.user?.email ? `orders_${session.user.email}` : 'lownose_orders';
     
-    // --- NUEVA LÓGICA DE FECHA, HORA E IMÁGENES ---
+    // --- LÓGICA DE FECHA, HORA E IMÁGENES ---
     const now = new Date();
     const order = {
       id: Date.now(),
       date: now.toLocaleDateString('es-CL'),
       time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-      items: cart.map((item:any) => ({
+      items: cart.map((item: any) => ({
         name: item.name,
         quantity: item.quantity,
         size: item.size,
