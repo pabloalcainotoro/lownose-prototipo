@@ -114,9 +114,19 @@ export default function CartPage() {
     // Clave dinámica por usuario para evitar ver pedidos ajenos
     const userKey = session?.user?.email ? `orders_${session.user.email}` : 'lownose_orders';
     
+    // --- NUEVA LÓGICA DE FECHA, HORA E IMÁGENES ---
+    const now = new Date();
     const order = {
       id: Date.now(),
-      items: cart,
+      date: now.toLocaleDateString('es-CL'),
+      time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      items: cart.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        size: item.size,
+        price: item.price,
+        image: item.image
+      })),
       total: totalWithShipping,
       customer: { name: customerName, address: customerAddress, region: customerRegion, comuna: customerComuna }
     };

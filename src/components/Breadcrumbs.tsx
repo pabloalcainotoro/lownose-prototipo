@@ -13,6 +13,7 @@ export default function Breadcrumbs() {
     'login': 'Mi Cuenta',
     'cart': 'Carrito',
     'profile': 'Perfil',
+    'orders': 'Mis Pedidos',
 
   };
 
