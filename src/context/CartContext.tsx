@@ -1,26 +1,34 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from "react";
+import { useSession } from "next-auth/react"; // Importamos useSession
 
 const CartContext = createContext<any>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession(); // Obtenemos la sesión
   const [cart, setCart] = useState<any[]>([]);
 
+  // Creamos una clave única basada en el email del usuario o 'guest'
+  const userEmail = session?.user?.email || 'guest';
+  const storageKey = `lownose_cart_${userEmail}`;
+
   useEffect(() => {
-    const savedCart = localStorage.getItem('lownose_cart');
+    const savedCart = localStorage.getItem(storageKey);
     if (savedCart) {
       try {
         setCart(JSON.parse(savedCart));
       } catch (e) {
         setCart([]);
       }
+    } else {
+      setCart([]); // Reset si el usuario no tiene carrito guardado
     }
-  }, []);
+  }, [userEmail]); // Se reactiva cuando cambia el usuario
 
   useEffect(() => {
-    localStorage.setItem('lownose_cart', JSON.stringify(cart));
-  }, [cart]);
+    localStorage.setItem(storageKey, JSON.stringify(cart));
+  }, [cart, storageKey]);
 
   const addToCart = (product: any) => {
     const cleanName = product.name.replace(/\s*\([^)]*\)$/, "").trim();
@@ -70,7 +78,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setCart([]);
-    localStorage.removeItem('lownose_cart');
+    localStorage.removeItem(storageKey); // Borramos la clave específica del usuario
   };
 
   return (

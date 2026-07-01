@@ -5,6 +5,13 @@ import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { CHILE_DATA } from '@/utils/chile';
+import { createClient } from '@supabase/supabase-js';
+
+// Configuración de Supabase
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function CartPage() {
   const { data: session } = useSession();
@@ -77,7 +84,23 @@ export default function CartPage() {
     setIsProcessing(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // --- LÓGICA DE REDUCCIÓN DE STOCK AL COMPRAR ---
+    // --- LÓGICA DE PERSISTENCIA EN SUPABASE ---
+    if (session?.user?.email) {
+      try {
+        await supabase.from('orders').insert({
+          user_id: session.user.id,
+          items: cart,
+          total: totalWithShipping,
+          customer_name: customerName,
+          address: customerAddress
+        });
+      } catch (err) {
+        console.error("Error al guardar en Supabase:", err);
+      }
+    }
+    // ------------------------------------------
+
+    // --- TU LÓGICA ORIGINAL ---
     const allProducts = JSON.parse(localStorage.getItem('lownose_products') || '[]');
     const updatedProducts = allProducts.map((p: any) => {
       const itemInCart = cart.find((i: any) => i.id === p.id);
@@ -87,8 +110,10 @@ export default function CartPage() {
       return p;
     });
     localStorage.setItem('lownose_products', JSON.stringify(updatedProducts));
-    // ----------------------------------------------
 
+    // Clave dinámica por usuario para evitar ver pedidos ajenos
+    const userKey = session?.user?.email ? `orders_${session.user.email}` : 'lownose_orders';
+    
     const order = {
       id: Date.now(),
       items: cart,
@@ -96,9 +121,9 @@ export default function CartPage() {
       customer: { name: customerName, address: customerAddress, region: customerRegion, comuna: customerComuna }
     };
 
-    const orders = JSON.parse(localStorage.getItem('lownose_orders') || '[]');
+    const orders = JSON.parse(localStorage.getItem(userKey) || '[]');
     orders.push(order);
-    localStorage.setItem('lownose_orders', JSON.stringify(orders));
+    localStorage.setItem(userKey, JSON.stringify(orders));
 
     clearCart();
     setOrderConfirmed(true);
@@ -186,7 +211,6 @@ export default function CartPage() {
                       >
                         -
                       </button>
-
                       <input
                         type="number"
                         min="1"
@@ -212,7 +236,6 @@ export default function CartPage() {
                         }}
                         className="w-10 text-center text-[10px] font-bold border-b border-black dark:border-white bg-transparent focus:outline-none"
                       />
-
                       <button
                         onClick={() => updateQuantity(item, 1)}
                         className="px-2 border text-[10px] hover:bg-neutral-100 dark:hover:bg-neutral-800"
@@ -236,23 +259,10 @@ export default function CartPage() {
               <input readOnly placeholder="Región" value={customerRegion} onClick={() => setShowRegionList(!showRegionList)} className="w-full border p-2 text-sm bg-white dark:bg-black cursor-pointer" />
               {showRegionList && (
                 <div className="absolute z-50 w-full bg-white dark:bg-neutral-900 border max-h-40 overflow-y-auto">
-                  <div
-                    className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 text-gray-400 font-bold"
-                    onClick={() => { setCustomerRegion(''); setCustomerComuna(''); setShowRegionList(false); }}
-                  >
-                    -- Limpiar selección --
-                  </div>
-                  {Object.keys(CHILE_DATA)
-                    .sort((a, b) => a.localeCompare(b))
-                    .map(r => (
-                      <div
-                        key={r}
-                        className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                        onClick={() => { setCustomerRegion(r); setCustomerComuna(''); setShowRegionList(false); }}
-                      >
-                        {r}
-                      </div>
-                    ))}
+                  <div className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 text-gray-400 font-bold" onClick={() => { setCustomerRegion(''); setCustomerComuna(''); setShowRegionList(false); }}>-- Limpiar selección --</div>
+                  {Object.keys(CHILE_DATA).sort((a, b) => a.localeCompare(b)).map(r => (
+                    <div key={r} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => { setCustomerRegion(r); setCustomerComuna(''); setShowRegionList(false); }}>{r}</div>
+                  ))}
                 </div>
               )}
             </div>
@@ -261,23 +271,10 @@ export default function CartPage() {
               <input readOnly placeholder="Comuna" value={customerComuna} onClick={() => customerRegion && setShowComunaList(!showComunaList)} className="w-full border p-2 text-sm bg-white dark:bg-black cursor-pointer" />
               {showComunaList && (
                 <div className="absolute z-50 w-full bg-white dark:bg-neutral-900 border max-h-40 overflow-y-auto">
-                  <div
-                    className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 text-gray-400 font-bold"
-                    onClick={() => { setCustomerComuna(''); setShowComunaList(false); }}
-                  >
-                    -- Limpiar selección --
-                  </div>
-                  {(CHILE_DATA[customerRegion] || [])
-                    .sort((a: string, b: string) => a.localeCompare(b))
-                    .map((c: string) => (
-                      <div
-                        key={c}
-                        className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                        onClick={() => { setCustomerComuna(c); setShowComunaList(false); }}
-                      >
-                        {c}
-                      </div>
-                    ))}
+                  <div className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 text-gray-400 font-bold" onClick={() => { setCustomerComuna(''); setShowComunaList(false); }}>-- Limpiar selección --</div>
+                  {(CHILE_DATA[customerRegion] || []).sort((a: string, b: string) => a.localeCompare(b)).map((c: string) => (
+                    <div key={c} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => { setCustomerComuna(c); setShowComunaList(false); }}>{c}</div>
+                  ))}
                 </div>
               )}
             </div>

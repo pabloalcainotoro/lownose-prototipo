@@ -2,6 +2,13 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { createClient } from '@supabase/supabase-js';
+
+// Inicialización de Supabase
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // Productos iniciales de fábrica para LowNose
 const initialProducts = [
@@ -21,6 +28,9 @@ export default function AdminPage() {
   const [maxStock, setMaxStock] = useState(10); // <--- AGREGADO
   const [image, setImage] = useState('');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+
+  // Estado para la subida de imagen
+  const [uploading, setUploading] = useState(false);
 
   const availableSizes = ["S", "M", "L", "XL", "XXL"];
 
@@ -42,6 +52,35 @@ export default function AdminPage() {
     }
   }, []);
 
+  // --- FUNCIÓN DE SUBIDA A SUPABASE ---
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('products')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('products')
+        .getPublicUrl(fileName);
+
+      setImage(publicUrlData.publicUrl);
+    } catch (error) {
+      alert("Error al subir la imagen");
+      console.error(error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSizeToggle = (size: string) => {
     if (selectedSizes.includes(size)) {
       setSelectedSizes(selectedSizes.filter(s => s !== size));
@@ -61,7 +100,7 @@ export default function AdminPage() {
     let updatedProducts;
 
     if (editingId !== null) {
-      updatedProducts = products.map(p => 
+      updatedProducts = products.map(p =>
         p.id === editingId ? { ...p, name, price: Number(price), maxStock: Number(maxStock), image, sizes: selectedSizes } : p
       );
       setEditingId(null);
@@ -79,7 +118,7 @@ export default function AdminPage() {
 
     setProducts(updatedProducts);
     localStorage.setItem('lownose_products', JSON.stringify(updatedProducts));
-    
+
     setName('');
     setPrice(0);
     setMaxStock(10); // <--- RESET
@@ -123,7 +162,7 @@ export default function AdminPage() {
           <h2 className="text-md font-black uppercase tracking-wider mb-4 text-neutral-400">
             {editingId ? "Modificar Ítems" : "Añadir al Catálogo"}
           </h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">Nombre de la Prenda</label>
@@ -139,6 +178,13 @@ export default function AdminPage() {
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">Stock Máximo</label>
               <input type="number" value={maxStock || ''} onChange={(e) => setMaxStock(Number(e.target.value))} className="w-full bg-white dark:bg-black border border-gray-200 dark:border-neutral-800 p-2 text-sm text-black dark:text-white focus:outline-none" placeholder="10" />
+            </div>
+
+            {/* --- INPUT DE SUBIDA AÑADIDO --- */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">Subir Imagen desde PC</label>
+              <input type="file" accept="image/*" onChange={handleFileUpload} disabled={uploading} className="w-full text-xs text-neutral-500" />
+              {uploading && <p className="text-[10px] animate-pulse mt-1">Subiendo a la nube...</p>}
             </div>
 
             <div>
@@ -161,8 +207,12 @@ export default function AdminPage() {
             </div>
 
             <div className="pt-2 flex space-x-2">
-              <button type="submit" className="flex-1 bg-black text-white dark:bg-white dark:text-black py-3 font-bold uppercase text-xs tracking-widest hover:opacity-80 transition-opacity cursor-pointer">
-                {editingId ? "Guardar Cambios" : "Publicar Prenda"}
+              <button
+                type="submit"
+                disabled={uploading} // <--- Deshabilita el botón si se está subiendo
+                className={`flex-1 py-3 font-bold uppercase text-xs tracking-widest transition-opacity cursor-pointer ${uploading ? 'bg-gray-400' : 'bg-black text-white dark:bg-white dark:text-black hover:opacity-80'}`}
+              >
+                {uploading ? "Subiendo..." : (editingId ? "Guardar Cambios" : "Publicar Prenda")}
               </button>
               {editingId && (
                 <button type="button" onClick={() => { setEditingId(null); setName(''); setPrice(0); setMaxStock(10); setImage(''); setSelectedSizes([]); }} className="border border-red-500 text-red-500 px-4 py-2 text-xs font-bold uppercase cursor-pointer">
@@ -177,7 +227,7 @@ export default function AdminPage() {
           <h2 className="text-md font-black uppercase tracking-wider mb-4 text-neutral-400">
             Inventario Activo ({products.length})
           </h2>
-          
+
           <div className="border border-gray-100 dark:border-neutral-900 divide-y divide-gray-100 dark:divide-neutral-900">
             {products.length === 0 ? (
               <p className="p-8 text-center text-sm text-neutral-400">El catálogo está vacío.</p>

@@ -1,8 +1,13 @@
-// src/app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth";
+import { SupabaseAdapter } from "@auth/supabase-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const { handlers } = NextAuth({
+// 1. Definimos la configuración primero
+const authOptions = {
+  adapter: SupabaseAdapter({
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  }),
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -12,7 +17,6 @@ const { handlers } = NextAuth({
         email: { type: "email" },
       },
       async authorize(credentials) {
-        // Si nos llegan las credenciales validadas, creamos la sesión de NextAuth de inmediato
         if (credentials?.email && credentials?.name) {
           return { 
             id: credentials.id as string, 
@@ -24,11 +28,12 @@ const { handlers } = NextAuth({
       }
     })
   ],
-  pages: {
-    signIn: '/login',
-  },
+  pages: { signIn: '/login' },
+  session: { strategy: "jwt" as const },
   secret: process.env.NEXTAUTH_SECRET,
-});
+};
 
-export const GET = handlers.GET;
-export const POST = handlers.POST;
+// 2. Usamos la estructura oficial de Auth.js v5
+const { handlers } = NextAuth(authOptions);
+
+export const { GET, POST } = handlers;
