@@ -55,7 +55,7 @@ export default function MyOrdersPage() {
               {/* Encabezado con ID, Fecha, Hora y botón de eliminar individual */}
               <div className="flex justify-between border-b border-gray-200 dark:border-neutral-800 pb-4 mb-4 font-bold text-sm">
                 <div>
-                  <span>Order #{order.id?.toString().slice(-4) || 'N/A'}</span>
+                  <span>Orden #{order.id?.toString().slice(-4) || 'N/A'}</span>
                   <span className="ml-4 text-gray-500 text-xs">{order.date} | {order.time}</span>
                 </div>
                 <button 
@@ -87,7 +87,7 @@ export default function MyOrdersPage() {
               </div>
               
               <div className="mt-6 pt-4 border-t border-gray-200 dark:border-neutral-800 flex justify-between items-center">
-                <span className="text-xs uppercase font-bold">Total Paid:</span>
+                <span className="text-xs uppercase font-bold">Total pagado:</span>
                 <span className="font-black text-lg">${formatPrice(order.total)}</span>
               </div>
             </div>

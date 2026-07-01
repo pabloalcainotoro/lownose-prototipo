@@ -45,7 +45,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="relative group h-96 bg-neutral-900 overflow-hidden">
             <div className="absolute inset-0 bg-black/40 z-10" />
-            <img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600" alt="Hoodies" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <img src="https://www.blanks4brands.com/cdn/shop/files/negro_1.webp?v=1764432373" alt="Hoodies" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             <div className="absolute bottom-8 left-8 z-20">
               <h4 className="text-2xl font-black text-white uppercase tracking-wide mb-2">Hoodies & Polerones</h4>
               <Link href="/shop" className="text-xs text-white font-bold uppercase tracking-widest underline underline-offset-4">Ver prendas →</Link>
@@ -53,7 +53,7 @@ export default function Home() {
           </div>
           <div className="relative group h-96 bg-neutral-900 overflow-hidden">
             <div className="absolute inset-0 bg-black/40 z-10" />
-            <img src="https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600" alt="Tees" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <img src="https://thehoodbrandchile.com/cdn/shop/files/BLACKWEB-MaxHeavyweightGarmentDyeT-Shirt_Front_copia.jpg?v=1707068307&width=1024" alt="Tees" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             <div className="absolute bottom-8 left-8 z-20">
               <h4 className="text-2xl font-black text-white uppercase tracking-wide mb-2">Essentials & Tees</h4>
               <Link href="/shop" className="text-xs text-white font-bold uppercase tracking-widest underline underline-offset-4">Ver prendas →</Link>

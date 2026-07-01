@@ -28,6 +28,9 @@ export default function CartPage() {
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
+  // Orden definido para las tallas
+  const TALLAS_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+
   useEffect(() => {
     if (session) {
       setCustomerName(session.user?.name || '');
@@ -201,7 +204,9 @@ export default function CartPage() {
                       </div>
                       {openSizeIndex === index && (
                         <div className="absolute z-50 w-20 bg-white dark:bg-neutral-900 border shadow-lg max-h-40 overflow-y-auto">
-                          {(item.availableSizes || ['S', 'M', 'L', 'XL']).map((s: string) => (
+                          {(item.availableSizes || ['S', 'M', 'L', 'XL'])
+                            .sort((a: string, b: string) => TALLAS_ORDER.indexOf(a) - TALLAS_ORDER.indexOf(b))
+                            .map((s: string) => (
                             <div
                               key={s}
                               className="p-2 text-[10px] uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
