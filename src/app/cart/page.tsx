@@ -120,7 +120,7 @@ export default function CartPage() {
       id: Date.now(),
       date: now.toLocaleDateString('es-CL'),
       time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-      items: cart.map(item => ({
+      items: cart.map((item:any) => ({
         name: item.name,
         quantity: item.quantity,
         size: item.size,
