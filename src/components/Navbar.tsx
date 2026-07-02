@@ -4,9 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { NavbarCounter } from "@/components/NavbarCounter";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useSession } from "next-auth/react";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session } = useSession();
 
   return (
     <nav className="sticky top-0 z-50 bg-[var(--background)] text-[var(--foreground)] border-b border-gray-100 dark:border-neutral-900 px-4 md:px-6 py-4 w-full overflow-x-hidden transition-colors duration-300">
@@ -29,7 +31,7 @@ export default function Navbar() {
               Mis Pedidos
             </Link>
             <Link href="/login" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              Mi Cuenta
+              {session ? 'Mi Cuenta' : 'Iniciar Sesión'}
             </Link>
           </div>
 
@@ -52,7 +54,6 @@ export default function Navbar() {
               )}
             </svg>
           </button>
-
         </div>
       </div>
 

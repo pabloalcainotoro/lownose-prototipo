@@ -66,7 +66,7 @@ export default function CartPage() {
       return;
     }
 
-    const existingTargetItem = cart.find((i: any) => i.id === item.id && i.size === newSize);
+    const existingTargetItem = cart.find((i: any) => i.product_id === item.product_id && i.size === newSize);
 
     if (existingTargetItem) {
       updateItem({
@@ -74,7 +74,7 @@ export default function CartPage() {
         quantity: existingTargetItem.quantity + item.quantity,
         originalSize: newSize
       });
-      removeFromCart(item.id, item.size);
+      removeFromCart(item.id);
     } else {
       updateItem({ ...item, size: newSize, originalSize: item.size });
     }
@@ -84,20 +84,33 @@ export default function CartPage() {
 
   const handleFinalize = async () => {
     setIsProcessing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // --- MAPEO LIMPIO DE ITEMS ---
+    // Limpiamos los metadatos de Supabase del carrito antes de guardar el pedido
+    const cleanItems = cart.map((item: any) => ({
+      id: item.product_id, // Volvemos a mapear la id original del producto
+      name: item.name,
+      quantity: item.quantity,
+      size: item.size,
+      price: item.price,
+      image: item.image
+    }));
 
     // --- LÓGICA DE PERSISTENCIA EN SUPABASE ---
     if (session?.user?.email && supabase) {
       try {
-        await supabase.from('orders').insert({
-          user_id: session.user.id,
-          items: cart,
-          total: totalWithShipping,
+        const { error } = await supabase.from('orders').insert({
+          user_id: session.user.id || null,
+          user_email: session.user.email,
+          items: cleanItems,
+          total_price: totalWithShipping, // <--- CAMBIADO DE "total" A "total_price"
           customer_name: customerName,
-          address: customerAddress
+          address: `${customerAddress}, ${customerComuna}, ${customerRegion}`
         });
+
+        if (error) throw error;
       } catch (err) {
-        console.error("Error al guardar en Supabase:", err);
+        console.error("Error crítico al guardar en Supabase (orders):", err);
       }
     }
     // ------------------------------------------
@@ -105,7 +118,7 @@ export default function CartPage() {
     // --- LÓGICA DE PRODUCTOS ---
     const allProducts = JSON.parse(localStorage.getItem('lownose_products') || '[]');
     const updatedProducts = allProducts.map((p: any) => {
-      const itemInCart = cart.find((i: any) => i.id === p.id);
+      const itemInCart = cart.find((i: any) => i.product_id === p.id);
       if (itemInCart) {
         return { ...p, maxStock: Math.max(0, p.maxStock - itemInCart.quantity) };
       }
@@ -115,20 +128,14 @@ export default function CartPage() {
 
     // Clave dinámica por usuario
     const userKey = session?.user?.email ? `orders_${session.user.email}` : 'lownose_orders';
-    
+
     // --- LÓGICA DE FECHA, HORA E IMÁGENES ---
     const now = new Date();
     const order = {
       id: Date.now(),
       date: now.toLocaleDateString('es-CL'),
       time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-      items: cart.map((item: any) => ({
-        name: item.name,
-        quantity: item.quantity,
-        size: item.size,
-        price: item.price,
-        image: item.image
-      })),
+      items: cleanItems,
       total: totalWithShipping,
       customer: { name: customerName, address: customerAddress, region: customerRegion, comuna: customerComuna }
     };
@@ -137,7 +144,7 @@ export default function CartPage() {
     orders.push(order);
     localStorage.setItem(userKey, JSON.stringify(orders));
 
-    clearCart();
+    await clearCart();
     setOrderConfirmed(true);
     setIsProcessing(false);
   };
@@ -181,7 +188,7 @@ export default function CartPage() {
           </div>
           <div className="flex space-x-4">
             <button onClick={() => setShowReview(false)} className="underline text-xs uppercase font-bold">Editar</button>
-            <button onClick={handleFinalize} className="bg-black text-white dark:bg-white dark:text-black px-6 py-2 text-xs uppercase font-bold">
+            <button disabled={isProcessing} onClick={handleFinalize} className="bg-black text-white dark:bg-white dark:text-black px-6 py-2 text-xs uppercase font-bold disabled:opacity-50">
               {isProcessing ? 'Procesando...' : 'Confirmar y Pagar'}
             </button>
           </div>
@@ -192,7 +199,7 @@ export default function CartPage() {
             {cart.map((item: any, index: number) => (
               <div key={`${item.id}-${item.size}`} className="flex border-b border-gray-100 dark:border-neutral-900 pb-6 items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <img src={item.image} alt={item.name} className="w-20 h-24 object-cover bg-gray-100" />
+                  <img src={item.image || "/placeholder.png"} alt={item.name} className="w-20 h-24 object-cover bg-gray-100" />
                   <div>
                     <h3 className="font-bold uppercase text-sm">{item.name}</h3>
                     <div className="relative my-2">
@@ -207,14 +214,14 @@ export default function CartPage() {
                           {(item.availableSizes || ['S', 'M', 'L', 'XL'])
                             .sort((a: string, b: string) => TALLAS_ORDER.indexOf(a) - TALLAS_ORDER.indexOf(b))
                             .map((s: string) => (
-                            <div
-                              key={s}
-                              className="p-2 text-[10px] uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                              onClick={() => updateSize(item, s)}
-                            >
-                              {s}
-                            </div>
-                          ))}
+                              <div
+                                key={s}
+                                className="p-2 text-[10px] uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                onClick={() => updateSize(item, s)}
+                              >
+                                {s}
+                              </div>
+                            ))}
                         </div>
                       )}
                     </div>
@@ -257,7 +264,7 @@ export default function CartPage() {
                         +
                       </button>
                     </div>
-                    <button onClick={() => removeFromCart(item.id, item.size)} className="text-[10px] font-bold text-red-500 uppercase underline">Eliminar</button>
+                    <button onClick={() => removeFromCart(item.id)} className="text-[10px] font-bold text-red-500 uppercase underline">Eliminar</button>
                   </div>
                 </div>
                 <p className="font-bold">${(Number(item.price) * Number(item.quantity)).toLocaleString('es-CL')}</p>

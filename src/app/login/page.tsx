@@ -1,12 +1,11 @@
 'use client';
 
-import { signIn, signOut, useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { CHILE_DATA } from "@/utils/chile"; 
 
 export default function LoginPage() {
-  const { data: session } = useSession();
-  
+  const [session, setSession] = useState<any>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,70 +19,97 @@ export default function LoginPage() {
     name: '', address: '', phone: '', region: '', comuna: '', postalCode: '' 
   });
 
-  // Estados para los dropdowns visuales
   const [showRegionList, setShowRegionList] = useState(false);
   const [showComunaList, setShowComunaList] = useState(false);
 
+  // Cargar sesión y perfil desde Supabase
   useEffect(() => {
-    if (session) {
-      const savedProfile = localStorage.getItem(`profile_${session.user?.email}`);
-      if (savedProfile) {
-        setProfile(JSON.parse(savedProfile));
-      } else {
-        setProfile({ name: session.user?.name || '', address: '', phone: '', region: '', comuna: '', postalCode: '' });
-      }
-    }
-  }, [session]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+    });
+  }, []);
 
-  const handleSaveProfile = () => {
-    localStorage.setItem(`profile_${session?.user?.email}`, JSON.stringify(profile));
-    setIsEditing(false);
-    alert("Perfil actualizado correctamente");
-  };
-
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    const existingUsers = JSON.parse(localStorage.getItem('lownose_users') || '[]');
-    if (existingUsers.some((u: any) => u.email === email)) {
-      setError("Este correo ya está registrado.");
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    
+    if (error) {
+      console.error("Error al cargar perfil desde Supabase:", error);
       return;
     }
-    const newUser = { id: Date.now().toString(), name, email, password };
-    existingUsers.push(newUser);
-    localStorage.setItem('lownose_users', JSON.stringify(existingUsers));
-    setSuccess("Cuenta creada. Ya puedes iniciar sesión.");
-    setIsRegistering(false);
+
+    if (data) {
+      setProfile({
+        name: data.name || '',
+        address: data.address || '',
+        phone: data.phone || '',
+        region: data.region || '',
+        comuna: data.comuna || '',
+        postalCode: data.postal_code || ''
+      });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    const payload = {
+      id: session.user.id,
+      name: profile.name || null,
+      address: profile.address || null,
+      phone: profile.phone || null,
+      region: profile.region || null,
+      comuna: profile.comuna || null,
+      postal_code: profile.postalCode || null
+    };
+
+    const { error } = await supabase.from('profiles').upsert(payload);
+
+    if (error) {
+      console.error("Error crítico al actualizar perfil en Supabase:", error);
+      alert(`Error al guardar perfil: ${error.message}`);
+    } else { 
+      alert("Perfil actualizado correctamente"); 
+      setIsEditing(false); 
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+    if (error) setError(error.message);
+    else setSuccess("Cuenta creada. Por favor verifica tu correo si es necesario.");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    let validUser = null;
-    if (email === "admin@lownose.cl" && password === "admin123") {
-      validUser = { id: "admin", name: "Administrador LowNose", email: "admin@lownose.cl" };
-    } else {
-      const users = JSON.parse(localStorage.getItem('lownose_users') || '[]');
-      const foundUser = users.find((u: any) => u.email === email && u.password === password);
-      if (foundUser) validUser = { id: foundUser.id, name: foundUser.name, email: foundUser.email };
-    }
-    if (!validUser) { setError("Credenciales incorrectas."); return; }
-    await signIn("credentials", { ...validUser, redirect: false });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError("Credenciales incorrectas.");
+    else window.location.reload();
   };
 
   if (session) {
     const isAdmin = session.user?.email === "admin@lownose.cl";
+
+    // Ordenamos las regiones alfabéticamente
+    const sortedRegions = Object.keys(CHILE_DATA).sort((a, b) => a.localeCompare(b));
+    
+    // Ordenamos las comunas de la región seleccionada alfabéticamente
+    const sortedComunas = profile.region ? [...(CHILE_DATA[profile.region] || [])].sort((a, b) => a.localeCompare(b)) : [];
+
     return (
       <div className="max-w-md mx-auto py-24 px-4">
-        <h2 className="text-2xl font-black uppercase tracking-wider mb-2">¡Hola, {session.user?.name}!</h2>
+        <h2 className="text-2xl font-black uppercase tracking-wider mb-2">¡Hola, {session.user?.user_metadata.name || 'Usuario'}!</h2>
         
         <div className="bg-neutral-50 dark:bg-neutral-950 p-6 border border-gray-100 dark:border-neutral-900 mb-6">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Información de Perfil</h3>
           <div className="space-y-4">
             {['name', 'address', 'postalCode', 'phone'].map((key) => (
               <div key={key}>
-                <label className="block text-[10px] font-bold uppercase text-neutral-500 mb-1">{key === 'postalCode' ? 'Código Postal' : key}</label>
+                <label className="block text-[10px] font-bold uppercase text-neutral-500 mb-1">
+                  {key === 'postalCode' ? 'Código Postal' : key === 'name' ? 'Nombre' : key === 'address' ? 'Dirección' : 'Teléfono'}
+                </label>
                 <input
                   type="text"
-                  value={profile[key as keyof typeof profile]}
+                  value={profile[key as keyof typeof profile] || ''}
                   disabled={!isEditing}
                   onChange={(e) => setProfile({...profile, [key]: e.target.value})}
                   className={`w-full bg-transparent border-b ${isEditing ? 'border-black dark:border-white' : 'border-transparent'} py-1 text-sm outline-none`}
@@ -91,24 +117,38 @@ export default function LoginPage() {
               </div>
             ))}
 
-            {/* Selector de Región Personalizado */}
+            {/* Región con opción de limpiar selección */}
             <div className="relative">
               <label className="block text-[10px] font-bold uppercase text-neutral-500 mb-1">Región</label>
-              <input readOnly value={profile.region} onClick={() => isEditing && setShowRegionList(!showRegionList)} className="w-full bg-transparent border-b py-1 text-sm outline-none cursor-pointer" placeholder="Seleccionar Región..." />
+              <input readOnly value={profile.region || ''} onClick={() => isEditing && setShowRegionList(!showRegionList)} className="w-full bg-transparent border-b py-1 text-sm outline-none cursor-pointer" placeholder="Seleccionar Región..." />
               {showRegionList && isEditing && (
                 <div className="absolute z-50 w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 max-h-40 overflow-y-auto mt-1 shadow-lg">
-                  {Object.keys(CHILE_DATA).map(r => <div key={r} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => { setProfile({...profile, region: r, comuna: ''}); setShowRegionList(false); }}>{r}</div>)}
+                  <div className="p-2 text-xs uppercase cursor-pointer text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold border-b border-neutral-100 dark:border-neutral-800" onClick={() => { setProfile({...profile, region: '', comuna: ''}); setShowRegionList(false); }}>
+                    -- Ninguna / Limpiar --
+                  </div>
+                  {sortedRegions.map(r => (
+                    <div key={r} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => { setProfile({...profile, region: r, comuna: ''}); setShowRegionList(false); }}>
+                      {r}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Selector de Comuna Personalizado */}
+            {/* Comuna con opción de limpiar selección */}
             <div className="relative">
               <label className="block text-[10px] font-bold uppercase text-neutral-500 mb-1">Comuna</label>
-              <input readOnly value={profile.comuna} onClick={() => isEditing && profile.region && setShowComunaList(!showComunaList)} className="w-full bg-transparent border-b py-1 text-sm outline-none cursor-pointer" placeholder="Seleccionar Comuna..." />
-              {showComunaList && isEditing && (
+              <input readOnly value={profile.comuna || ''} onClick={() => isEditing && profile.region && setShowComunaList(!showComunaList)} className="w-full bg-transparent border-b py-1 text-sm outline-none cursor-pointer" placeholder={profile.region ? "Seleccionar Comuna..." : "Selecciona una región primero"} />
+              {showComunaList && isEditing && profile.region && (
                 <div className="absolute z-50 w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 max-h-40 overflow-y-auto mt-1 shadow-lg">
-                  {(CHILE_DATA[profile.region] || []).map(c => <div key={c} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => { setProfile({...profile, comuna: c}); setShowComunaList(false); }}>{c}</div>)}
+                  <div className="p-2 text-xs uppercase cursor-pointer text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold border-b border-neutral-100 dark:border-neutral-800" onClick={() => { setProfile({...profile, comuna: ''}); setShowComunaList(false); }}>
+                    -- Ninguna / Limpiar --
+                  </div>
+                  {sortedComunas.map(c => (
+                    <div key={c} className="p-2 text-xs uppercase cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => { setProfile({...profile, comuna: c}); setShowComunaList(false); }}>
+                      {c}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -120,7 +160,7 @@ export default function LoginPage() {
         </div>
 
         {isAdmin && <a href="/admin" className="block text-center bg-amber-600 text-white py-3 mb-4 text-xs font-bold uppercase">Ir al Panel de Admin →</a>}
-        <button onClick={() => signOut()} className="w-full bg-black text-white dark:bg-white dark:text-black py-3 text-xs font-bold uppercase">Cerrar Sesión</button>
+        <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="w-full bg-black text-white dark:bg-white dark:text-black py-3 text-xs font-bold uppercase">Cerrar Sesión</button>
       </div>
     );
   }
@@ -133,6 +173,7 @@ export default function LoginPage() {
       </div>
       <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4 bg-neutral-50 dark:bg-neutral-950 p-6 border border-gray-100 dark:border-neutral-900">
         {error && <p className="text-red-600 text-xs p-2 bg-red-100">{error}</p>}
+        {success && <p className="text-green-600 text-xs p-2 bg-green-100">{success}</p>}
         {isRegistering && <input type="text" required placeholder="Nombre" className="w-full border p-2 text-sm" onChange={(e) => setName(e.target.value)} />}
         <input type="email" required placeholder="Correo" className="w-full border p-2 text-sm" onChange={(e) => setEmail(e.target.value)} />
         <input type="password" required placeholder="Contraseña" className="w-full border p-2 text-sm" onChange={(e) => setPassword(e.target.value)} />

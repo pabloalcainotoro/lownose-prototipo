@@ -3,12 +3,12 @@
 import { useCart } from "@/context/CartContext";
 import { useEffect, useState } from "react";
 import ProductSkeleton from "@/components/ProductSkeleton";
+import { createClient } from '@supabase/supabase-js';
 
-const initialProducts = [
-  { id: 1, name: "Oversized Heavy Weight Hoodie", price: 45000, maxStock: 10, image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600", sizes: ["S", "M", "L", "XL"] },
-  { id: 2, name: "LowNose Box Logo Tee", price: 22000, maxStock: 20, image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600", sizes: ["M", "L", "XL", "XXL"] },
-  { id: 3, name: "Acid Wash Street Sweatshirt", price: 38000, maxStock: 5, image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600", sizes: ["S", "M", "L"] }
-];
+// Inicialización de Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function ShopPage() {
   const { addToCart } = useCart();
@@ -16,19 +16,24 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSizes, setSelectedSizes] = useState<{ [key: number]: string }>({});
 
+  // Carga de productos desde Supabase
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const localData = localStorage.getItem('lownose_products');
-      if (localData) {
-        setProducts(JSON.parse(localData));
-      } else {
-        setProducts(initialProducts);
-        localStorage.setItem('lownose_products', JSON.stringify(initialProducts));
+    const fetchProducts = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error("Error al cargar productos:", error);
+      } else if (data) {
+        setProducts(data);
       }
       setLoading(false);
-    }, 800);
+    };
 
-    return () => clearTimeout(timer);
+    fetchProducts();
   }, []);
 
   const handleSizeSelect = (productId: number, size: string) => {
@@ -42,12 +47,12 @@ export default function ShopPage() {
       return;
     }
 
-    // AQUÍ SE AGREGA maxStock AL CARRITO
+    // Ahora esta función llama al CartProvider conectado a la BD
     addToCart({
       ...product,
       size: size,
       availableSizes: product.sizes,
-      maxStock: product.maxStock || 99, // Pasamos el stock máximo definido en el admin
+      maxStock: product.maxStock || 99,
       quantity: 1
     });
 
@@ -64,6 +69,8 @@ export default function ShopPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
         {loading ? (
           [1, 2, 3].map((i) => <ProductSkeleton key={i} />)
+        ) : products.length === 0 ? (
+          <p className="col-span-3 text-center text-neutral-400 font-bold uppercase tracking-widest text-xs">No hay productos disponibles actualmente.</p>
         ) : (
           products.map((product) => (
             <div key={product.id} className="flex flex-col justify-between group">
@@ -80,7 +87,7 @@ export default function ShopPage() {
                   {product.name}
                 </h3>
                 <p className="font-mono text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-                  ${product.price.toLocaleString('es-CL')}
+                  ${product.price?.toLocaleString('es-CL')}
                 </p>
                 <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-widest mb-4">
                   Stock disponible: {product.maxStock || 0}
@@ -98,9 +105,9 @@ export default function ShopPage() {
                           key={size}
                           onClick={() => handleSizeSelect(product.id, size)}
                           className={`w-9 h-9 text-xs font-mono font-bold border transition-colors cursor-pointer flex items-center justify-center ${isSelected
-                              ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white'
-                              : 'border-neutral-200 dark:border-neutral-800 text-neutral-500 hover:border-neutral-400 dark:hover:border-neutral-600'
-                            }`}
+                            ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white'
+                            : 'border-neutral-200 dark:border-neutral-800 text-neutral-500 hover:border-neutral-400 dark:hover:border-neutral-600'
+                          }`}
                         >
                           {size}
                         </button>
